@@ -46,7 +46,7 @@ def recieve_day_candle_MOEX(ticker, type='shares'):
         # print(ticker)
         dtunix, dtstr = glv.dbcandle.getlastdate(ticker)  # получим конечную дату имеющихся в базе свечей
         if dtunix is None:
-            datefrom = '2025-10-01'
+            datefrom = '2019-01-01'
         else:
             dtunix = dtunix + 86400                            # это следующий день
             if dtunix >= dateto:  # если следующий день это завтра, значит свечи по сегодня включительно уже есть
@@ -65,7 +65,7 @@ def recieve_day_candle_MOEX(ticker, type='shares'):
     flagend = True
 
     while flagend:
-        print(start)
+        # print(start)
         if type == 'shares':
             url = f'https://iss.moex.com/iss/engines/stock/markets/shares/securities/{ticker}/candles.json?from={datefrom}&till={yesterday}&interval=60&start={start}'
             # ДЛЯ ФЬЮЧЕРСА
@@ -82,7 +82,7 @@ def recieve_day_candle_MOEX(ticker, type='shares'):
             try:
                 count = 0
                 array = response.json()  # array - это объект json???
-                print(url)
+                # print(url)
                 for item in array['candles']['data']:
                     op.append(item[0])
                     cl.append(item[1])
