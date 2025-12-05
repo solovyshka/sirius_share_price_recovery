@@ -1,7 +1,21 @@
 import numpy as np
 import pandas as pd
-from typing import Sequence, Optional
+from typing import Sequence, Optional, Callable
 from functools import reduce
+
+Feature = Callable[[pd.DataFrame], pd.DataFrame]
+
+
+def get_price_series(df: pd.DataFrame) -> pd.Series:
+    assert "timestamp" in df.columns, "DataFrame must contain 'timestamp' column"
+
+    price_cols = [col for col in df.columns if col != "timestamp"]
+    if len(price_cols) != 1:
+        raise ValueError(
+            f"Expected exactly 1 non-'timestamp' column, got {len(price_cols)}: {price_cols}"
+        )
+
+    return df[price_cols[0]].astype(float)
 
 
 def choose_alpha_with_mse(s: pd.Series) -> float:
@@ -22,15 +36,12 @@ def choose_alpha_with_mse(s: pd.Series) -> float:
 
 
 def rolling_features(
-    y: pd.Series | np.ndarray | Sequence[float],
+    df: pd.DataFrame,
     window: int,
     weights: Optional[Sequence[float]] = None,
     alpha: Optional[float] = None,
 ) -> pd.DataFrame:
-    if isinstance(y, pd.Series):
-        s = y.copy()
-    else:
-        s = pd.Series(y, name="y")
+    s = get_price_series(df)
 
     if alpha is not None:
         if not (0.0 < alpha < 1.0):
@@ -62,3 +73,41 @@ def rolling_features(
     features["max"] = roll.max()
     features["std"] = roll.std()
     return features
+
+
+def preprocess(raw_df: pd.DataFrame, features: Sequence[Feature]) -> pd.DataFrame:
+    """
+    Usage:
+    >>> df = preprocess(
+    ...     df,
+    ...     [
+    ...         lambda df: rolling_features(df, window=3),
+    ...     ],
+    ... )
+    """
+
+    if "timestamp" not in raw_df.columns:
+        raise ValueError("Input DataFrame must contain 'timestamp' column")
+    if not raw_df["timestamp"].is_unique:
+        raise ValueError("Timestamps must be unique")
+
+    base = raw_df.sort_values("timestamp").set_index("timestamp", drop=False)
+    feat_dfs: list[pd.DataFrame] = []
+
+    for fn in features:
+        fdf = fn(base)
+        if len(fdf) != len(base):
+            raise ValueError(
+                f"Feature {getattr(fn, '__name__', fn)} returned DataFrame "
+                f"of wrong length: {len(fdf)} != {len(base)}"
+            )
+
+        if not fdf.index.equals(base.index):
+            fdf = fdf.copy()
+            fdf.index = base.index
+
+        feat_dfs.append(fdf)
+
+    dataset = pd.concat([base, *feat_dfs], axis=1)
+    dataset = dataset.loc[:, ~dataset.columns.duplicated(keep="first")]
+    return dataset.reset_index(drop=True)
