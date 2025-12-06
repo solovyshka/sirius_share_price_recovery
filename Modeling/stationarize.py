@@ -15,7 +15,7 @@ class STLModel:
                seasonal_smooth: int = 23,
                seasonal_periods: int = 15
                ):
-    '''data(pd.Series): Индекс обязательно должен быть в формате datetime!!!!!!!!!'''
+    '''data(pd.Series): Временной ряд. Индекс обязательно должен быть в формате datetime!!!!!!!!!'''
     self.data = np.log(data) if log_smooth else data
     self.original_data = data
     self.log_smooth = log_smooth
@@ -97,7 +97,7 @@ class STLModel:
     plt.suptitle('Trend, seasonal and residual')
     plt.savefig('Modeling/images/' + pic_file)
 
-  def reconstruct(self, components, last_tick_plot=100, original=None, make_compare_plot=False, pic_file='STL_compare.png'):
+  def reconstruct(self, components, last_ticks_plot=100, original=None, make_compare_plot=False, pic_file='STL_compare.png'):
     if components is None:
         components = self.get_components(make_plot=False)
     dates = components.index
@@ -119,7 +119,7 @@ class STLModel:
     )
 
     if make_compare_plot:
-      self.plot_prices_compare(dates, reconstructed, original, period=last_tick_plot, pic_file=pic_file)
+      self.plot_prices_compare(dates, reconstructed, original, period=last_ticks_plot, pic_file=pic_file)
 
     return reconstructed_series
 
@@ -258,7 +258,7 @@ class HolterWintersModel:
     plt.suptitle('Trend, seasonal and residual')
     plt.savefig('Modeling/images/' + pic_file)
 
-  def reconstruct(self, components, last_tick_plot=100, original=None, make_compare_plot=False, pic_file='HW_compare.png'):
+  def reconstruct(self, components, last_ticks_plot=100, original=None, make_compare_plot=False, pic_file='HW_compare.png'):
     if components is None:
         components = self.get_components(make_plot=False)
     dates = components.index
@@ -277,7 +277,7 @@ class HolterWintersModel:
     )
 
     if make_compare_plot:
-      self.plot_prices_compare(dates, reconstructed, original, period=last_tick_plot, pic_file=pic_file)
+      self.plot_prices_compare(dates, reconstructed, original, period=last_ticks_plot, pic_file=pic_file)
 
     return reconstructed_series
 
@@ -388,7 +388,7 @@ if __name__ == "__main__":
     print('Start HW...')
     stat = HolterWintersModel(data=data1, log_smooth=True, trend_mode='add', seasonal_mode='add').fit()
     components = stat.get_components(make_plot=True, last_ticks_plot=200)
-    reconstructed = stat.reconstruct(components, original=data1, make_compare_plot=200)
+    reconstructed = stat.reconstruct(components, original=data1, make_compare_plot=True, last_ticks_plot=200)
     print('HW complete')
 
     print('Start FRACDIFF')
