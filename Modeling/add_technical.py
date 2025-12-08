@@ -73,15 +73,15 @@ class TechnicalIndicators:
         df['MACD_diff'] = df['MACD'] - df['MACD_signal']
         
         # Parabolic SAR
-        def calc_psar(high, low, af_start=0.02, af_step=0.02, af_max=0.2): # -> [psar, trend (1/-1), XtremePoint]
+        def calc_psar(high, low, af_start=0.02, af_step=0.02, af_max=0.2, epsilon=1e-10):
             psar = np.full(len(high), np.nan, dtype=float)
             trend = np.full(len(high), 0, dtype=int)
             af = np.full(len(high), af_start, dtype=float)
             ep = np.full(len(high), np.nan, dtype=float)
 
-            psar[0] = low.iloc[0]
-            trend[0] = 1 # bull
-            ep[0] = high.iloc[0]
+            psar[0] = low.iloc[0] if not np.isnan(low.iloc[0]) else low.iloc[1]
+            trend[0] = 1  # bull
+            ep[0] = high.iloc[0] if not np.isnan(high.iloc[0]) else high.iloc[1]
 
             for i in range(1, len(high)):
                 prev_psar = psar[i - 1]
@@ -91,17 +91,26 @@ class TechnicalIndicators:
 
                 current_low = low.iloc[i]
                 current_high = high.iloc[i]
+                
+                if pd.isna(current_low) or pd.isna(current_high):
+                    psar[i] = prev_psar
+                    trend[i] = prev_trend
+                    af[i] = prev_af
+                    ep[i] = prev_ep
+                    continue
 
-                if prev_trend == 1: # bull
+                if prev_trend == 1:  # bull
                     new_psar = prev_psar + prev_af * (prev_ep - prev_psar)
+                    
+                    if abs(new_psar) > 1e100:
+                        new_psar = np.sign(new_psar) * 1e100
 
-                    if current_low <= new_psar: # reverse
+                    if current_low <= new_psar:  # reverse
                         trend[i] = -1
                         psar[i] = max(prev_ep, current_high)
-                        
                         ep[i] = current_low
                         af[i] = af_start
-                    else: # continue
+                    else:  # continue
                         trend[i] = 1
                         psar[i] = new_psar
 
@@ -112,16 +121,18 @@ class TechnicalIndicators:
                             ep[i] = prev_ep
                             af[i] = prev_af
 
-                else: # bear
+                else:  # bear
                     new_psar = prev_psar - prev_af * (prev_ep - prev_psar)
+                    
+                    if abs(new_psar) > 1e100:
+                        new_psar = np.sign(new_psar) * 1e100
 
-                    if current_high >= new_psar: # reverse
+                    if current_high >= new_psar:  # reverse
                         trend[i] = 1
                         psar[i] = min(prev_ep, current_low)
-
                         ep[i] = current_high
                         af[i] = af_start
-                    else: # continue
+                    else:  # continue
                         trend[i] = -1
                         psar[i] = new_psar
 
@@ -138,13 +149,32 @@ class TechnicalIndicators:
             
             return psar_series, trend_series, ep_series
 
+
+        def safe_psar_distance(close, psar, epsilon=1e-10):
+            close_safe = close.copy()
+            psar_safe = psar.copy()
+            
+            psar_safe = psar_safe.replace([np.inf, -np.inf], np.nan)
+            
+            psar_safe = psar_safe.interpolate(method='linear', limit_direction='both')
+            
+            min_positive = close_safe[close_safe > 0].min() if (close_safe > 0).any() else epsilon
+            
+            close_safe = close_safe.where(close_safe > 0, min_positive)
+            
+            distance = (close_safe - psar_safe) / close_safe * 100
+            
+            distance = np.clip(distance, -1000, 1000)
+            
+            return distance
+
         psar, trend, ep = calc_psar(df['high'], df['low'])
         df['PSAR'] = psar
         df['PSAR_trend'] = trend
         df['PSAR_ep'] = ep
 
         df['PSAR_above_price'] = (df['PSAR'] > df['close']).astype(int)
-        df['PSAR_distance'] = (df['close'] - df['PSAR']) / df['close'] * 100
+        df['PSAR_distance'] = safe_psar_distance(df['close'], psar)
         
         # ADX
         def calc_adx(high, low, close, window=14): # [adx, +di, -di, dx]
