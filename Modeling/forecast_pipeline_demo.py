@@ -22,9 +22,9 @@ from Modeling.forecast_pipeline import ForecastPipeline
 from Modeling.residual_models import ArimaResidualModel, AutoArimaResidualModel
 from Modeling.trend_forecasting import (
     trend_forecast_exponential,
+    trend_forecast_last_slope,
     trend_forecast_linear_reg,
     trend_forecast_logistic,
-    trend_forecast_last_slope,
 )
 
 
@@ -67,6 +67,7 @@ def run_all_demos():
     steps = 30
     test_size = 200
     plot_tail = 400
+    trend_window = 200
 
     rolling_feat = rolling_features_feature(window=5)
     fracdiff_feat = fracdiff_feature(
@@ -106,7 +107,9 @@ def run_all_demos():
             ticker="SBER",
             feature_builders=[rolling_feat, fracdiff_feat],
             decomposition_fn=lambda s: stl_decomposition(
-                s, seasonal_periods=15, trend_forecaster=trend_forecast_logistic
+                s,
+                seasonal_periods=15,
+                trend_forecaster=trend_forecast_logistic(trend_window),
             ),
             model_factory=arima_factory,
         ),
@@ -121,7 +124,9 @@ def run_all_demos():
             ticker="SBER",
             feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
-                s, seasonal_periods=12, trend_forecaster=trend_forecast_last_slope
+                s,
+                seasonal_periods=12,
+                trend_forecaster=trend_forecast_last_slope(trend_window),
             ),
             model_factory=arima_factory,
         ),
@@ -136,7 +141,9 @@ def run_all_demos():
             ticker="SBER",
             feature_builders=[fracdiff_feat],
             decomposition_fn=lambda s: stl_decomposition(
-                s, seasonal_periods=20, trend_forecaster=trend_forecast_exponential
+                s,
+                seasonal_periods=20,
+                trend_forecaster=trend_forecast_exponential(trend_window),
             ),
             model_factory=arima_factory,
         ),
@@ -155,7 +162,7 @@ def run_all_demos():
                 seasonal_periods=15,
                 trend_mode="add",
                 seasonal_mode="add",
-                trend_forecaster=trend_forecast_linear_reg,
+                trend_forecaster=trend_forecast_linear_reg(trend_window),
             ),
             model_factory=arima_factory,
         ),
@@ -170,7 +177,9 @@ def run_all_demos():
             ticker="SBER",
             feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
-                s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
+                s,
+                seasonal_periods=18,
+                trend_forecaster=trend_forecast_logistic(trend_window),
             ),
             model_factory=auto_arima_factory,
         ),
@@ -186,7 +195,7 @@ def run_all_demos():
     #         ticker="SBER",
     #         feature_builders=[rolling_feat],
     #         decomposition_fn=lambda s: stl_decomposition(
-    #             s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
+    #             s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic(trend_window)
     #         ),
     #         model_factory=arima_factory,
     #         exog_forecast_factory=exog_autoarima_factory,
@@ -202,7 +211,9 @@ def run_all_demos():
             ticker="SBER",
             feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
-                s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
+                s,
+                seasonal_periods=18,
+                trend_forecaster=trend_forecast_logistic(trend_window),
             ),
             model_factory=arima_factory,
             exog_forecast_factory=last_value_exog_factory,
@@ -218,7 +229,9 @@ def run_all_demos():
             ticker="SBER",
             feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
-                s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
+                s,
+                seasonal_periods=18,
+                trend_forecaster=trend_forecast_logistic(trend_window),
             ),
             model_factory=arima_factory,
             exog_forecast_factory=seasonal_naive_exog_factory,
@@ -234,7 +247,9 @@ def run_all_demos():
             ticker="SBER",
             feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
-                s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
+                s,
+                seasonal_periods=18,
+                trend_forecaster=trend_forecast_logistic(trend_window),
             ),
             model_factory=arima_factory,
             exog_forecast_factory=last_slope_exog_factory,
@@ -250,7 +265,9 @@ def run_all_demos():
             ticker="SBER",
             feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
-                s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
+                s,
+                seasonal_periods=18,
+                trend_forecaster=trend_forecast_logistic(trend_window),
             ),
             model_factory=arima_factory,
             exog_forecast_factory=linear_reg_exog_factory,
@@ -266,7 +283,9 @@ def run_all_demos():
             ticker="SBER",
             feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
-                s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
+                s,
+                seasonal_periods=18,
+                trend_forecaster=trend_forecast_logistic(trend_window),
             ),
             model_factory=arima_factory,
             exog_forecast_factory=var_exog_factory,
@@ -282,7 +301,9 @@ def run_all_demos():
             ticker="SBER",
             feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
-                s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
+                s,
+                seasonal_periods=18,
+                trend_forecaster=trend_forecast_logistic(trend_window),
             ),
             model_factory=arima_factory,
             exog_forecast_factory=exp_smoothing_exog_factory,
@@ -298,7 +319,9 @@ def run_all_demos():
             ticker="SBER",
             feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
-                s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
+                s,
+                seasonal_periods=18,
+                trend_forecaster=trend_forecast_logistic(trend_window),
             ),
             model_factory=arima_factory,
             exog_forecast_factory=ensemble_exog_factory,

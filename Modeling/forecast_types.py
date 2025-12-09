@@ -19,9 +19,13 @@ class ExogForecastModel(Protocol):
 class ForecastModel(Protocol):
     """Интерфейс для моделей прогноза остатка."""
 
-    def fit(self, y: pd.Series, exog: Optional[pd.DataFrame] = None) -> ForecastModel: ...
+    def fit(
+        self, y: pd.Series, exog: Optional[pd.DataFrame] = None
+    ) -> ForecastModel: ...
 
-    def predict(self, steps: int, exog_future: Optional[pd.DataFrame] = None) -> pd.Series: ...
+    def predict(
+        self, steps: int, exog_future: Optional[pd.DataFrame] = None
+    ) -> pd.Series: ...
 
 
 @dataclass
