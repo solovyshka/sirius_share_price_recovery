@@ -64,7 +64,9 @@ class ForecastPipeline:
         if len(residual) == 0:
             raise ValueError("Разложение не вернуло валидный остаток.")
 
-        exog_train = exog.loc[residual.index] if exog is not None and not exog.empty else None
+        exog_train = (
+            exog.loc[residual.index] if exog is not None and not exog.empty else None
+        )
 
         model = self.model_factory()
         model.fit(residual, exog=exog_train)
@@ -83,7 +85,9 @@ class ForecastPipeline:
         trend_forecast.index = future_index
         seasonal_forecast.index = future_index
 
-        forecast = self._combine(trend_forecast, seasonal_forecast, residual_forecast, decomposition)
+        forecast = self._combine(
+            trend_forecast, seasonal_forecast, residual_forecast, decomposition
+        )
 
         if plot:
             self.plot_price_forecast(
@@ -137,7 +141,9 @@ class ForecastPipeline:
             raise ValueError("Разложение не вернуло валидный остаток на train.")
 
         exog_train_aligned = (
-            exog_train.loc[residual.index] if exog_train is not None and not exog_train.empty else None
+            exog_train.loc[residual.index]
+            if exog_train is not None and not exog_train.empty
+            else None
         )
 
         model = self.model_factory()
@@ -146,7 +152,9 @@ class ForecastPipeline:
         stationarity_tests = self._run_stationarity_tests(residual)
 
         steps = len(y_test)
-        future_exog_input = None if self.exog_forecast_factory is not None else exog_test
+        future_exog_input = (
+            None if self.exog_forecast_factory is not None else exog_test
+        )
         exog_future = self._prepare_future_exog(
             exog_train=exog_train_aligned,
             future_exog=future_exog_input,
@@ -160,7 +168,9 @@ class ForecastPipeline:
         trend_forecast.index = y_test.index
         seasonal_forecast.index = y_test.index
 
-        forecast = self._combine(trend_forecast, seasonal_forecast, residual_forecast, decomposition)
+        forecast = self._combine(
+            trend_forecast, seasonal_forecast, residual_forecast, decomposition
+        )
 
         metrics = self._compute_metrics(y_test, forecast)
 
@@ -183,15 +193,23 @@ class ForecastPipeline:
             "stationarity_tests": stationarity_tests,
         }
 
-    def _prepare_dataset(self, raw_df: pd.DataFrame) -> Tuple[pd.Series, pd.DataFrame, pd.DataFrame]:
+    def _prepare_dataset(
+        self, raw_df: pd.DataFrame
+    ) -> Tuple[pd.Series, pd.DataFrame, pd.DataFrame]:
         raw_columns = set(raw_df.columns)
 
-        dataset = preprocess(raw_df=raw_df, ticker_name=self.ticker, features=self.feature_builders)
+        dataset = preprocess(
+            raw_df=raw_df, ticker_name=self.ticker, features=self.feature_builders
+        )
 
         if "timestamp" not in dataset.columns:
             raise ValueError("В исходных данных нет столбца timestamp.")
 
-        feature_columns = [col for col in dataset.columns if col not in raw_columns and col != "timestamp"]
+        feature_columns = [
+            col
+            for col in dataset.columns
+            if col not in raw_columns and col != "timestamp"
+        ]
         ordered_columns = ["timestamp", self.ticker, *feature_columns]
         dataset = dataset.loc[:, [c for c in ordered_columns if c in dataset.columns]]
 
@@ -288,7 +306,9 @@ class ForecastPipeline:
 
             missing_cols = set(exog_train.columns) - set(exog_future.columns)
             if missing_cols:
-                raise ValueError(f"Модель прогноза exog не вернула колонки: {missing_cols}")
+                raise ValueError(
+                    f"Модель прогноза exog не вернула колонки: {missing_cols}"
+                )
 
             exog_future = exog_future[exog_train.columns]
             exog_future = exog_future.reset_index(drop=True)
@@ -403,5 +423,9 @@ class ForecastPipeline:
         mae = float(np.abs(err).mean())
         rmse = float(np.sqrt((err**2).mean()))
         nonzero = actual != 0
-        mape = float((np.abs(err[nonzero] / actual[nonzero])).mean()) * 100 if nonzero.any() else np.nan
+        mape = (
+            float((np.abs(err[nonzero] / actual[nonzero])).mean()) * 100
+            if nonzero.any()
+            else np.nan
+        )
         return {"mae": mae, "rmse": rmse, "mape": mape}
