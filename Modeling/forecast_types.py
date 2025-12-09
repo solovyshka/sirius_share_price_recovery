@@ -13,7 +13,7 @@ class ExogForecastModel(Protocol):
 
     def fit(self, exog: pd.DataFrame) -> ExogForecastModel: ...
 
-    def predict(self, horizon: int) -> pd.DataFrame: ...
+    def predict(self, steps: int) -> pd.DataFrame: ...
 
 
 class ForecastModel(Protocol):
@@ -33,28 +33,28 @@ class DecompositionResult:
     seasonal_periods: Optional[int] = None
     trend_forecaster: Optional[TrendForecaster] = None
 
-    def forecast_components(self, horizon: int) -> Tuple[pd.Series, pd.Series]:
+    def forecast_components(self, steps: int) -> Tuple[pd.Series, pd.Series]:
         """Простейшая экстраполяция тренда и сезонности вперед."""
-        if horizon <= 0:
-            raise ValueError("horizon должен быть > 0")
+        if steps <= 0:
+            raise ValueError("steps должен быть > 0")
 
         # Импорт здесь, чтобы избежать циклической зависимости.
         from Modeling.trend_forecasting import trend_forecast_last_slope
 
         trend_fn = self.trend_forecaster or trend_forecast_last_slope
-        trend_forecast = trend_fn(self.trend, horizon)
+        trend_forecast = trend_fn(self.trend, steps)
 
         seasonal_clean = self.seasonal.dropna()
         if len(seasonal_clean) == 0:
             seasonal_forecast = pd.Series(
-                np.zeros(horizon, dtype=float), name="seasonal_forecast"
+                np.zeros(steps, dtype=float), name="seasonal_forecast"
             )
         else:
             period = self.seasonal_periods or len(seasonal_clean)
             period = max(1, min(period, len(seasonal_clean)))
             values = seasonal_clean.iloc[-period:].to_numpy(dtype=float)
-            repeats = int(np.ceil(horizon / len(values)))
-            seasonal_values = np.tile(values, repeats)[:horizon]
+            repeats = int(np.ceil(steps / len(values)))
+            seasonal_values = np.tile(values, repeats)[:steps]
             seasonal_forecast = pd.Series(seasonal_values, name="seasonal_forecast")
 
         return trend_forecast, seasonal_forecast

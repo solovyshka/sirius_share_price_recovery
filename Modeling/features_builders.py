@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional, Sequence
 
-from Collected_data.MOEX_connector.preprocessing import Feature
+from Collected_data.MOEX_connector.preprocessing import Feature, rolling_features
 from Collected_data.MOEX_connector.add_technical import TechnicalIndicators
 from Modeling.stationarize import FracDiffModel
 
@@ -73,5 +73,21 @@ def technical_indicator_feature(
         ind_df = ind_df.reindex(df.index)
         ind_df.index = df.index
         return ind_df
+
+    return build
+
+
+def rolling_features_feature(
+    window: int,
+    weights: Optional[Sequence[float]] = None,
+    alpha: Optional[float] = None,
+) -> Feature:
+    """
+    Обертка над rolling_features, чтобы заранее зафиксировать параметры окна.
+    Возвращает функцию с сигнатурой Feature для preprocess/ForecastPipeline.
+    """
+
+    def build(df: pd.DataFrame, col: str) -> pd.DataFrame:
+        return rolling_features(df, col, window=window, weights=weights, alpha=alpha)
 
     return build

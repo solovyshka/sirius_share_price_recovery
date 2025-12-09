@@ -72,7 +72,7 @@ class ForecastPipeline:
         stationarity_tests = self._run_stationarity_tests(residual)
 
         exog_future = self._prepare_future_exog(
-            exog_train=exog_train, future_exog=future_exog, horizon=steps
+            exog_train=exog_train, future_exog=future_exog, steps=steps
         )
 
         residual_forecast = model.predict(steps=steps, exog_future=exog_future)
@@ -150,7 +150,7 @@ class ForecastPipeline:
         exog_future = self._prepare_future_exog(
             exog_train=exog_train_aligned,
             future_exog=future_exog_input,
-            horizon=steps,
+            steps=steps,
         )
 
         residual_forecast = model.predict(steps=steps, exog_future=exog_future)
@@ -226,9 +226,9 @@ class ForecastPipeline:
         return pd.Series(base.values, index=trend.index, name="forecast")
 
     @staticmethod
-    def _make_future_index(index: pd.Index, horizon: int) -> pd.Index:
-        if horizon <= 0:
-            raise ValueError("horizon должен быть > 0")
+    def _make_future_index(index: pd.Index, steps: int) -> pd.Index:
+        if steps <= 0:
+            raise ValueError("steps должен быть > 0")
 
         if isinstance(index, pd.DatetimeIndex):
             freq = index.inferred_freq
@@ -238,7 +238,7 @@ class ForecastPipeline:
                     freq = diffs.value_counts().idxmax()
             if freq is None:
                 freq = pd.Timedelta(days=1)
-            return pd.date_range(start=index[-1] + freq, periods=horizon, freq=freq)
+            return pd.date_range(start=index[-1] + freq, periods=steps, freq=freq)
 
         if pd.api.types.is_numeric_dtype(index):
             if len(index) > 1:
@@ -248,16 +248,16 @@ class ForecastPipeline:
                 step = 1
 
             last = index[-1]
-            values = [last + step * (i + 1) for i in range(horizon)]
+            values = [last + step * (i + 1) for i in range(steps)]
             return pd.Index(values, name=index.name)
 
-        return pd.RangeIndex(start=len(index), stop=len(index) + horizon, name=index.name)
+        return pd.RangeIndex(start=len(index), stop=len(index) + steps, name=index.name)
 
     def _prepare_future_exog(
         self,
         exog_train: Optional[pd.DataFrame],
         future_exog: Optional[pd.DataFrame],
-        horizon: int,
+        steps: int,
     ) -> Optional[pd.DataFrame]:
         """
         ARIMA с экзогенными фичами требует будущие значения.
@@ -270,8 +270,8 @@ class ForecastPipeline:
             return None
 
         if future_exog is not None:
-            if len(future_exog) != horizon:
-                raise ValueError("future_exog должен иметь такую же длину, как horizon.")
+            if len(future_exog) != steps:
+                raise ValueError("future_exog должен иметь такую же длину, как steps.")
 
             missing_cols = set(exog_train.columns) - set(future_exog.columns)
             if missing_cols:
@@ -284,7 +284,7 @@ class ForecastPipeline:
             exog_numeric = exog_train.astype(float)
 
             forecaster.fit(exog_numeric)
-            exog_future = forecaster.predict(horizon=horizon)
+            exog_future = forecaster.predict(steps=steps)
 
             missing_cols = set(exog_train.columns) - set(exog_future.columns)
             if missing_cols:
@@ -295,7 +295,7 @@ class ForecastPipeline:
             return exog_future
 
         last_row = exog_train.iloc[[-1]]
-        repeated = pd.concat([last_row] * horizon, ignore_index=True)
+        repeated = pd.concat([last_row] * steps, ignore_index=True)
         repeated.columns = exog_train.columns
         return repeated
 

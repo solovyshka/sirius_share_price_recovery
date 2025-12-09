@@ -30,13 +30,13 @@ class LastValueExogForecaster:
         self._last = exog.iloc[-1]
         return self
 
-    def predict(self, horizon: int) -> pd.DataFrame:
+    def predict(self, steps: int) -> pd.DataFrame:
         if self._last is None:
             raise RuntimeError("Сначала вызовите fit().")
-        if horizon <= 0:
-            raise ValueError("horizon должен быть > 0.")
+        if steps <= 0:
+            raise ValueError("steps должен быть > 0.")
 
-        data = np.tile(self._last.to_numpy(dtype=float), (horizon, 1))
+        data = np.tile(self._last.to_numpy(dtype=float), (steps, 1))
         return pd.DataFrame(data, columns=self._last.index)
 
 
@@ -93,9 +93,9 @@ class PerColumnAutoArimaExogForecaster:
 
         return self
 
-    def predict(self, horizon: int) -> pd.DataFrame:
-        if horizon <= 0:
-            raise ValueError("horizon должен быть > 0.")
+    def predict(self, steps: int) -> pd.DataFrame:
+        if steps <= 0:
+            raise ValueError("steps должен быть > 0.")
         if not self._columns:
             raise RuntimeError("Сначала вызовите fit().")
 
@@ -105,9 +105,9 @@ class PerColumnAutoArimaExogForecaster:
             model = self._models.get(col)
             if model is None:
                 last_val = self._last_values.get(col, 0.0)
-                data[col] = np.full(horizon, last_val, dtype=float)
+                data[col] = np.full(steps, last_val, dtype=float)
             else:
-                fc = model.predict(n_periods=horizon)
+                fc = model.predict(n_periods=steps)
                 data[col] = np.asarray(fc, dtype=float)
 
         df = pd.DataFrame(data)
@@ -136,15 +136,15 @@ class SeasonalNaiveExogForecaster:
         self._pattern = exog_numeric.iloc[-window:].reset_index(drop=True)
         return self
 
-    def predict(self, horizon: int) -> pd.DataFrame:
+    def predict(self, steps: int) -> pd.DataFrame:
         if self._pattern is None:
             raise RuntimeError("Сначала вызовите fit().")
-        if horizon <= 0:
-            raise ValueError("horizon должен быть > 0.")
+        if steps <= 0:
+            raise ValueError("steps должен быть > 0.")
 
-        repeats = int(np.ceil(horizon / len(self._pattern)))
+        repeats = int(np.ceil(steps / len(self._pattern)))
         pattern_rep = pd.concat([self._pattern] * repeats, ignore_index=True)
-        return pattern_rep.iloc[:horizon].reset_index(drop=True)
+        return pattern_rep.iloc[:steps].reset_index(drop=True)
 
 
 @dataclass
@@ -189,14 +189,14 @@ class PerColumnLastSlopeExogForecaster:
 
         return self
 
-    def predict(self, horizon: int) -> pd.DataFrame:
-        if horizon <= 0:
-            raise ValueError("horizon должен быть > 0.")
+    def predict(self, steps: int) -> pd.DataFrame:
+        if steps <= 0:
+            raise ValueError("steps должен быть > 0.")
         if not self._columns:
             raise RuntimeError("Сначала вызовите fit().")
 
         data: Dict[str, np.ndarray] = {}
-        steps = np.arange(1, horizon + 1, dtype=float)
+        steps = np.arange(1, steps + 1, dtype=float)
 
         for col in self._columns:
             last = self._last_values.get(col, 0.0)
@@ -252,14 +252,14 @@ class PerColumnLinearRegExogForecaster:
 
         return self
 
-    def predict(self, horizon: int) -> pd.DataFrame:
-        if horizon <= 0:
-            raise ValueError("horizon должен быть > 0.")
+    def predict(self, steps: int) -> pd.DataFrame:
+        if steps <= 0:
+            raise ValueError("steps должен быть > 0.")
         if not self._columns:
             raise RuntimeError("Сначала вызовите fit().")
 
         start = self._n_obs
-        t_future = np.arange(start, start + horizon, dtype=float)
+        t_future = np.arange(start, start + steps, dtype=float)
         data: Dict[str, np.ndarray] = {}
 
         for col in self._columns:
@@ -321,15 +321,15 @@ class VarExogForecaster:
         self._last_obs = endog_source[-k_ar:]
         return self
 
-    def predict(self, horizon: int) -> pd.DataFrame:
-        if horizon <= 0:
-            raise ValueError("horizon должен быть > 0.")
+    def predict(self, steps: int) -> pd.DataFrame:
+        if steps <= 0:
+            raise ValueError("steps должен быть > 0.")
         if self._model is None:
             raise RuntimeError("Сначала вызовите fit().")
         if self._last_obs is None:
             raise RuntimeError("Нет стартовых наблюдений для прогноза VAR.")
 
-        fc = self._model.forecast(y=self._last_obs, steps=horizon)
+        fc = self._model.forecast(y=self._last_obs, steps=steps)
         df = pd.DataFrame(fc, columns=self._columns)
         return df
 
@@ -377,9 +377,9 @@ class PerColumnExpSmoothingExogForecaster:
 
         return self
 
-    def predict(self, horizon: int) -> pd.DataFrame:
-        if horizon <= 0:
-            raise ValueError("horizon должен быть > 0.")
+    def predict(self, steps: int) -> pd.DataFrame:
+        if steps <= 0:
+            raise ValueError("steps должен быть > 0.")
         if not self._columns:
             raise RuntimeError("Сначала вызовите fit().")
 
@@ -387,12 +387,12 @@ class PerColumnExpSmoothingExogForecaster:
         for col in self._columns:
             model_or_val = self._models.get(col)
             if model_or_val is None:
-                data[col] = np.zeros(horizon, dtype=float)
+                data[col] = np.zeros(steps, dtype=float)
             elif hasattr(model_or_val, "forecast"):
-                fc = model_or_val.forecast(horizon)
+                fc = model_or_val.forecast(steps)
                 data[col] = np.asarray(fc, dtype=float)
             else:
-                data[col] = np.full(horizon, float(model_or_val), dtype=float)
+                data[col] = np.full(steps, float(model_or_val), dtype=float)
 
         return pd.DataFrame(data)
 
@@ -421,11 +421,11 @@ class EnsembleExogForecaster:
             model.fit(exog)
             self._models.append(model)
 
-        sample = self._models[0].predict(horizon=1)
+        sample = self._models[0].predict(steps=1)
         self._columns = list(sample.columns)
 
         for m in self._models[1:]:
-            cols = list(m.predict(horizon=1).columns)
+            cols = list(m.predict(steps=1).columns)
             if cols != self._columns:
                 raise ValueError(
                     "Модели в ансамбле возвращают разные наборы колонок exog."
@@ -444,13 +444,13 @@ class EnsembleExogForecaster:
 
         return self
 
-    def predict(self, horizon: int) -> pd.DataFrame:
-        if horizon <= 0:
-            raise ValueError("horizon должен быть > 0.")
+    def predict(self, steps: int) -> pd.DataFrame:
+        if steps <= 0:
+            raise ValueError("steps должен быть > 0.")
         if not self._models:
             raise RuntimeError("Сначала вызовите fit().")
 
-        preds = [m.predict(horizon=horizon) for m in self._models]
+        preds = [m.predict(steps=steps) for m in self._models]
         preds = [df[self._columns].astype(float).reset_index(drop=True) for df in preds]
 
         stacked = np.stack([df.values for df in preds], axis=0)

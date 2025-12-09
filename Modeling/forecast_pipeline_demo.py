@@ -13,7 +13,11 @@ from Modeling.exog_forecasters import (
     SeasonalNaiveExogForecaster,
     VarExogForecaster,
 )
-from Modeling.features_builders import fracdiff_feature, technical_indicator_feature
+from Modeling.features_builders import (
+    fracdiff_feature,
+    rolling_features_feature,
+    technical_indicator_feature,
+)
 from Modeling.forecast_pipeline import ForecastPipeline
 from Modeling.residual_models import ArimaResidualModel, AutoArimaResidualModel
 from Modeling.trend_forecasting import (
@@ -28,11 +32,11 @@ def run_demo(
     name: str,
     pipeline: ForecastPipeline,
     raw_df: pd.DataFrame,
-    horizon: int,
+    steps: int,
     plot_tail: int,
 ):
     print(f"\n=== {name} (forecast) ===")
-    result = pipeline.forecast(raw_df, steps=horizon, plot=True, plot_last=plot_tail)
+    result = pipeline.forecast(raw_df, steps=steps, plot=True, plot_last=plot_tail)
     print("Forecast tail:")
     print(result.forecast.tail())
     print("Stationarity summary:")
@@ -58,15 +62,13 @@ def evaluate_demo(
 
 
 def run_all_demos():
-    from Collected_data.MOEX_connector.preprocessing import rolling_features
-
     raw_df = pd.read_csv("DataBase/CLOSE.csv")
 
-    horizon = 30
+    steps = 30
     test_size = 200
     plot_tail = 400
 
-    rolling_feat = [lambda df, col: rolling_features(df, col, window=5)]
+    rolling_feat = rolling_features_feature(window=5)
     fracdiff_feat = fracdiff_feature(
         diff_amt=0.3, log_smooth=True, column_name="fracdiff_0_3"
     )
@@ -102,14 +104,14 @@ def run_all_demos():
         "STL + ARIMA + logistic trend with rolling + fracdiff features",
         ForecastPipeline(
             ticker="SBER",
-            feature_builders=[*rolling_feat, fracdiff_feat],
+            feature_builders=[rolling_feat, fracdiff_feat],
             decomposition_fn=lambda s: stl_decomposition(
                 s, seasonal_periods=15, trend_forecaster=trend_forecast_logistic
             ),
             model_factory=arima_factory,
         ),
         raw_df,
-        horizon,
+        steps,
         plot_tail,
     )
 
@@ -117,7 +119,7 @@ def run_all_demos():
         "STL + ARIMA, last-slope trend, rolling window features",
         ForecastPipeline(
             ticker="SBER",
-            feature_builders=rolling_feat,
+            feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
                 s, seasonal_periods=12, trend_forecaster=trend_forecast_last_slope
             ),
@@ -166,7 +168,7 @@ def run_all_demos():
         "STL + AutoARIMA residuals, logistic trend, rolling features",
         ForecastPipeline(
             ticker="SBER",
-            feature_builders=rolling_feat,
+            feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
                 s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
             ),
@@ -176,13 +178,13 @@ def run_all_demos():
         test_size,
         plot_tail,
     )
-    
+
     # too long to run locally
     # evaluate_demo(
     #     "STL + ARIMA (resid) + AutoARIMA exog forecast, rolling features",
     #     ForecastPipeline(
     #         ticker="SBER",
-    #         feature_builders=rolling_feat,
+    #         feature_builders=[rolling_feat],
     #         decomposition_fn=lambda s: stl_decomposition(
     #             s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
     #         ),
@@ -198,7 +200,7 @@ def run_all_demos():
         "STL + ARIMA (resid) + LastValue exog forecast, rolling features",
         ForecastPipeline(
             ticker="SBER",
-            feature_builders=rolling_feat,
+            feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
                 s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
             ),
@@ -214,7 +216,7 @@ def run_all_demos():
         "STL + ARIMA (resid) + SeasonalNaive exog forecast, rolling features",
         ForecastPipeline(
             ticker="SBER",
-            feature_builders=rolling_feat,
+            feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
                 s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
             ),
@@ -230,7 +232,7 @@ def run_all_demos():
         "STL + ARIMA (resid) + LastSlope exog forecast, rolling features",
         ForecastPipeline(
             ticker="SBER",
-            feature_builders=rolling_feat,
+            feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
                 s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
             ),
@@ -246,7 +248,7 @@ def run_all_demos():
         "STL + ARIMA (resid) + LinearReg exog forecast, rolling features",
         ForecastPipeline(
             ticker="SBER",
-            feature_builders=rolling_feat,
+            feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
                 s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
             ),
@@ -262,7 +264,7 @@ def run_all_demos():
         "STL + ARIMA (resid) + VAR exog forecast, rolling features",
         ForecastPipeline(
             ticker="SBER",
-            feature_builders=rolling_feat,
+            feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
                 s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
             ),
@@ -278,7 +280,7 @@ def run_all_demos():
         "STL + ARIMA (resid) + ExpSmoothing exog forecast, rolling features",
         ForecastPipeline(
             ticker="SBER",
-            feature_builders=rolling_feat,
+            feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
                 s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
             ),
@@ -294,7 +296,7 @@ def run_all_demos():
         "STL + ARIMA (resid) + Ensemble exog forecast, rolling features",
         ForecastPipeline(
             ticker="SBER",
-            feature_builders=rolling_feat,
+            feature_builders=[rolling_feat],
             decomposition_fn=lambda s: stl_decomposition(
                 s, seasonal_periods=18, trend_forecaster=trend_forecast_logistic
             ),
