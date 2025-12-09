@@ -428,4 +428,6 @@ class ForecastPipeline:
             if nonzero.any()
             else np.nan
         )
-        return {"mae": mae, "rmse": rmse, "mape": mape}
+        ss_tot = float(np.sum((actual - actual.mean()) ** 2))
+        r2 = float(1 - np.sum(err**2) / ss_tot) if ss_tot != 0 else np.nan
+        return {"mae": mae, "rmse": rmse, "mape": mape, "r2": r2}
