@@ -41,6 +41,15 @@ class ForecastPipeline:
         stationarity_alpha: float = 0.05,
         exog_forecast_factory: Optional[Callable[[], ExogForecastModel]] = None,
     ):
+        """
+        :param ticker: имя целевого столбца
+        :param decomposition_fn: функция разложения ряда на компоненты
+        :param model_factory: фабрика модели для прогноза остатка
+        :param feature_builders: функции построения фич
+        :param timestamp_unit: единица измерения timestamp
+        :param stationarity_alpha: уровень значимости тестов стационарности
+        :param exog_forecast_factory: фабрика прогноза экзогенных признаков для будущего периода
+        """
         self.ticker = ticker
         self.decomposition_fn = decomposition_fn
         self.model_factory = model_factory
@@ -57,6 +66,13 @@ class ForecastPipeline:
         plot: bool = False,
         plot_last: Optional[int] = None,
     ) -> ForecastResult:
+        """
+        :param raw_df: исходный датафрейм с ценой и фичами
+        :param steps: сколько шагов прогнозируем
+        :param future_exog: будущие значения экзогенных признаков, если есть
+        :param plot: рисовать ли график
+        :param plot_last: сколько последних точек отображать
+        """
         y, exog, prepared_dataset = self._prepare_dataset(raw_df)
 
         decomposition = self.decomposition_fn(y)
@@ -116,7 +132,11 @@ class ForecastPipeline:
     ) -> dict:
         """
         Простая валидация: train/test split по времени, обучение на train, прогноз на длину test.
-        test_size: количество точек (int) или доля (0..1).
+
+        :param raw_df: исходный датафрейм с ценой и фичами
+        :param test_size: количество точек (int) или доля (0..1) отложенной выборки
+        :param plot: рисовать ли бэктест
+        :param plot_last: сколько последних точек train показывать
         """
         y, exog, prepared_dataset = self._prepare_dataset(raw_df)
         if len(y) < 2:
@@ -358,7 +378,15 @@ class ForecastPipeline:
         title: str = "Price forecast",
         figsize: tuple[int, int] = (12, 6),
     ):
-        """Рисует историю + прогноз. Возвращает (fig, ax)."""
+        """
+        Рисует историю + прогноз. Возвращает (fig, ax).
+
+        :param history: исторический ценовой ряд
+        :param forecast: прогнозируемый ряд
+        :param last_points: длина хвоста истории для отображения
+        :param title: заголовок графика
+        :param figsize: размер фигуры matplotlib
+        """
         history = history.sort_index()
         forecast = forecast.sort_index()
 
@@ -387,7 +415,16 @@ class ForecastPipeline:
         title: str = "Backtest",
         figsize: tuple[int, int] = (12, 6),
     ):
-        """Рисует train/test/fc. Возвращает (fig, ax)."""
+        """
+        Рисует train/test/fc. Возвращает (fig, ax).
+
+        :param train: обучающий сегмент
+        :param test: фактические значения отложенной выборки
+        :param forecast: прогноз на тестовом горизонте
+        :param last_points: длина хвоста train для отображения
+        :param title: заголовок графика
+        :param figsize: размер фигуры matplotlib
+        """
         train = train.sort_index()
         test = test.sort_index()
         forecast = forecast.sort_index()

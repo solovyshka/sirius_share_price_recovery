@@ -11,21 +11,37 @@ TrendForecaster = Callable[[pd.Series, int], pd.Series]
 class ExogForecastModel(Protocol):
     """Интерфейс для моделей прогноза экзогенных признаков."""
 
-    def fit(self, exog: pd.DataFrame) -> ExogForecastModel: ...
+    def fit(self, exog: pd.DataFrame) -> ExogForecastModel:
+        """
+        :param exog: исторические экзогенные признаки для обучения модели
+        """
+        ...
 
-    def predict(self, steps: int) -> pd.DataFrame: ...
+    def predict(self, steps: int) -> pd.DataFrame:
+        """
+        :param steps: горизонт прогноза для экзогенных признаков
+        """
+        ...
 
 
 class ForecastModel(Protocol):
     """Интерфейс для моделей прогноза остатка."""
 
-    def fit(
-        self, y: pd.Series, exog: Optional[pd.DataFrame] = None
-    ) -> ForecastModel: ...
+    def fit(self, y: pd.Series, exog: Optional[pd.DataFrame] = None) -> ForecastModel:
+        """
+        :param y: ряд остатка для обучения
+        :param exog: экзогенные признаки, совпадающие по индексу с y
+        """
+        ...
 
     def predict(
         self, steps: int, exog_future: Optional[pd.DataFrame] = None
-    ) -> pd.Series: ...
+    ) -> pd.Series:
+        """
+        :param steps: длина прогноза
+        :param exog_future: будущие значения экзогенных признаков
+        """
+        ...
 
 
 @dataclass
@@ -38,7 +54,11 @@ class DecompositionResult:
     trend_forecaster: Optional[TrendForecaster] = None
 
     def forecast_components(self, steps: int) -> Tuple[pd.Series, pd.Series]:
-        """Простейшая экстраполяция тренда и сезонности вперед."""
+        """
+        Простейшая экстраполяция тренда и сезонности вперед.
+
+        :param steps: горизонт, на который надо экстраполировать тренд и сезонность
+        """
         if steps <= 0:
             raise ValueError("steps должен быть > 0")
 

@@ -21,6 +21,13 @@ def stl_decomposition(
     seasonal_periods: int = 15,
     trend_forecaster: Optional[TrendForecaster] = None,
 ) -> DecompositionResult:
+    """
+    :param series: целевой временной ряд
+    :param log_smooth: сглаживать ли логарифмом перед STL
+    :param seasonal_smooth: окно сглаживания сезонности
+    :param seasonal_periods: длина сезона
+    :param trend_forecaster: функция для экстраполяции тренда вперёд
+    """
     model = STLModel(
         data=series,
         log_smooth=log_smooth,
@@ -49,6 +56,14 @@ def holt_winters_decomposition(
     seasonal_mode: str = "add",
     trend_forecaster: Optional[TrendForecaster] = None,
 ) -> DecompositionResult:
+    """
+    :param series: целевой временной ряд
+    :param log_smooth: сглаживать ли логарифмом перед Holt-Winters
+    :param seasonal_periods: длина сезона
+    :param trend_mode: тип тренда ("add"/"mul")
+    :param seasonal_mode: тип сезонности ("add"/"mul")
+    :param trend_forecaster: функция экстраполяции тренда
+    """
     series_ordinal, orig_index = _with_ordinal_index(series)
     model = HolterWintersModel(
         data=series_ordinal,

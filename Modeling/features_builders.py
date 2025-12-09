@@ -18,9 +18,18 @@ def fracdiff_feature(
     """
     Обертка над FracDiffModel, чтобы добавить дробно-дифференцированный ряд как фичу.
     Используется как экзогенная переменная, а не как разложение для восстановления цены.
+
+    :param diff_amt: степень дробного дифференцирования
+    :param log_smooth: применять ли логарифм перед дифференцированием
+    :param column_name: имя результирующего столбца
+    :param timestamp_unit: единица измерения timestamp
     """
 
     def build(df: pd.DataFrame, col: str) -> pd.DataFrame:
+        """
+        :param df: датасет со столбцом timestamp и ценой
+        :param col: имя ценового столбца, который преобразуем
+        """
         if "timestamp" not in df.columns:
             raise ValueError("В DataFrame нет столбца 'timestamp' для fracdiff.")
 
@@ -49,10 +58,17 @@ def technical_indicator_feature(
     """
     Обертка над TechnicalIndicators, чтобы добавить индикаторы как фичи для preprocess.
     Загружаются из DataBase/OPEN|HIGH|LOW|CLOSE|VOLUME.csv.
+
+    :param ticker: тикер инструмента для загрузки индикаторов
+    :param indicator_columns: опциональный список колонок индикаторов
     """
     tech = TechnicalIndicators()
 
     def build(df: pd.DataFrame, col: str) -> pd.DataFrame:
+        """
+        :param df: базовый dataframe для выравнивания индексов
+        :param col: имя ценового столбца (не используется)
+        """
         ind_df = tech.get_indicators(ticker)
         if ind_df is None:
             raise ValueError(f"Не удалось получить индикаторы для {ticker}")
@@ -85,9 +101,17 @@ def rolling_features_feature(
     """
     Обертка над rolling_features, чтобы заранее зафиксировать параметры окна.
     Возвращает функцию с сигнатурой Feature для preprocess/ForecastPipeline.
+
+    :param window: длина скользящего окна
+    :param weights: свои веса для взвешенного среднего, если нужны
+    :param alpha: коэффициент сглаживания, пробрасываемый в rolling_features
     """
 
     def build(df: pd.DataFrame, col: str) -> pd.DataFrame:
+        """
+        :param df: датасет с ценами
+        :param col: имя ценового столбца, по которому считаются скользящие метрики
+        """
         return rolling_features(df, col, window=window, weights=weights, alpha=alpha)
 
     return build

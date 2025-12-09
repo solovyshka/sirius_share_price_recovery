@@ -7,6 +7,10 @@ Feature = Callable[[pd.DataFrame, str], pd.DataFrame]
 
 
 def get_price_series(df: pd.DataFrame, ticker_name: str) -> pd.Series:
+    """
+    :param df: входной DataFrame с ценами и столбцом timestamp
+    :param ticker_name: имя столбца с ценой
+    """
     assert "timestamp" in df.columns, "DataFrame must contain 'timestamp' column"
 
     if ticker_name not in df.columns:
@@ -19,6 +23,9 @@ def get_price_series(df: pd.DataFrame, ticker_name: str) -> pd.Series:
 
 
 def choose_alpha_with_mse(s: pd.Series) -> float:
+    """
+    :param s: ценовой ряд, по которому подбирается alpha, минимизирующая MSE
+    """
     y = s.dropna().to_numpy(dtype=float)
 
     def mse_for_alpha(a: float) -> float:
@@ -42,6 +49,13 @@ def rolling_features(
     weights: Optional[Sequence[float]] = None,
     alpha: Optional[float] = None,
 ) -> pd.DataFrame:
+    """
+    :param df: исходный датасет с ценами
+    :param ticker_name: название столбца, по которому считаются скользящие признаки
+    :param window: размер окна
+    :param weights: при необходимости задаёт свои веса для взвешенного среднего
+    :param alpha: коэффициент экспоненциального сглаживания; если None, подбирается автоматически
+    """
     s = get_price_series(df, ticker_name)
 
     if alpha is not None:
@@ -80,6 +94,10 @@ def preprocess(
     raw_df: pd.DataFrame, ticker_name: str, features: Sequence[Feature]
 ) -> pd.DataFrame:
     """
+    :param raw_df: исходный датасет со столбцом timestamp и ценой
+    :param ticker_name: имя ценового столбца-таргета
+    :param features: последовательность Feature-функций, добавляющих новые столбцы
+
     Usage:
     >>> df = preprocess(
     ...     df,

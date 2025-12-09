@@ -25,12 +25,18 @@ class LastValueExogForecaster:
         self._last: Optional[pd.Series] = None
 
     def fit(self, exog: pd.DataFrame) -> LastValueExogForecaster:
+        """
+        :param exog: история экзогенных признаков, из которой берётся последняя строка
+        """
         if exog is None or exog.empty:
             raise ValueError("exog пуст, нечего обучать в LastValueExogForecaster.")
         self._last = exog.iloc[-1]
         return self
 
     def predict(self, steps: int) -> pd.DataFrame:
+        """
+        :param steps: сколько будущих шагов повторять последнюю строку exog
+        """
         if self._last is None:
             raise RuntimeError("Сначала вызовите fit().")
         if steps <= 0:
@@ -59,6 +65,9 @@ class PerColumnAutoArimaExogForecaster:
     _last_values: Dict[str, float] = field(init=False, default_factory=dict)
 
     def fit(self, exog: pd.DataFrame) -> PerColumnAutoArimaExogForecaster:
+        """
+        :param exog: исторические экзогенные признаки для подбора ARIMA по каждому столбцу
+        """
         if exog is None or exog.empty:
             raise ValueError(
                 "exog пуст, нечего обучать в PerColumnAutoArimaExogForecaster."
@@ -94,6 +103,9 @@ class PerColumnAutoArimaExogForecaster:
         return self
 
     def predict(self, steps: int) -> pd.DataFrame:
+        """
+        :param steps: сколько шагов прогнозируем для каждого экзогенного столбца
+        """
         if steps <= 0:
             raise ValueError("steps должен быть > 0.")
         if not self._columns:
@@ -122,12 +134,18 @@ class SeasonalNaiveExogForecaster:
     """
 
     def __init__(self, period: int):
+        """
+        :param period: длина повторяющегося сезонного паттерна экзогенных признаков
+        """
         if period <= 0:
             raise ValueError("period должен быть > 0")
         self.period = period
         self._pattern: Optional[pd.DataFrame] = None
 
     def fit(self, exog: pd.DataFrame) -> SeasonalNaiveExogForecaster:
+        """
+        :param exog: исторические экзогенные значения для извлечения последнего сезонного паттерна
+        """
         if exog is None or exog.empty:
             raise ValueError("exog пуст, нечего обучать в SeasonalNaiveExogForecaster.")
 
@@ -137,6 +155,9 @@ class SeasonalNaiveExogForecaster:
         return self
 
     def predict(self, steps: int) -> pd.DataFrame:
+        """
+        :param steps: горизонт, на который повторяется сохранённый сезонный паттерн
+        """
         if self._pattern is None:
             raise RuntimeError("Сначала вызовите fit().")
         if steps <= 0:
@@ -162,6 +183,9 @@ class PerColumnLastSlopeExogForecaster:
     _columns: list[str] = field(init=False, default_factory=list)
 
     def fit(self, exog: pd.DataFrame) -> PerColumnLastSlopeExogForecaster:
+        """
+        :param exog: исторические экзогенные значения для оценки последнего значения и наклона по каждому столбцу
+        """
         if exog is None or exog.empty:
             raise ValueError(
                 "exog пуст, нечего обучать в PerColumnLastSlopeExogForecaster."
@@ -190,6 +214,9 @@ class PerColumnLastSlopeExogForecaster:
         return self
 
     def predict(self, steps: int) -> pd.DataFrame:
+        """
+        :param steps: на сколько периодов вперёд экстраполировать каждый экзогенный столбец
+        """
         if steps <= 0:
             raise ValueError("steps должен быть > 0.")
         if not self._columns:
@@ -218,6 +245,9 @@ class PerColumnLinearRegExogForecaster:
     _columns: list[str] = field(init=False, default_factory=list)
 
     def fit(self, exog: pd.DataFrame) -> PerColumnLinearRegExogForecaster:
+        """
+        :param exog: экзогенный датасет, по которому строится линейная регрессия индекс->значение
+        """
         if exog is None or exog.empty:
             raise ValueError(
                 "exog пуст, нечего обучать в PerColumnLinearRegExogForecaster."
@@ -253,6 +283,9 @@ class PerColumnLinearRegExogForecaster:
         return self
 
     def predict(self, steps: int) -> pd.DataFrame:
+        """
+        :param steps: горизонт, на который продолжается линейная регрессия по столбцам
+        """
         if steps <= 0:
             raise ValueError("steps должен быть > 0.")
         if not self._columns:
@@ -284,6 +317,9 @@ class VarExogForecaster:
     _columns: list[str] = field(init=False, default_factory=list)
 
     def fit(self, exog: pd.DataFrame) -> VarExogForecaster:
+        """
+        :param exog: многомерный ряд экзогенных признаков, по которому обучается VAR
+        """
         if exog is None or exog.empty:
             raise ValueError("exog пуст, нечего обучать в VarExogForecaster.")
 
@@ -322,6 +358,9 @@ class VarExogForecaster:
         return self
 
     def predict(self, steps: int) -> pd.DataFrame:
+        """
+        :param steps: сколько будущих наблюдений сгенерировать из обученной VAR
+        """
         if steps <= 0:
             raise ValueError("steps должен быть > 0.")
         if self._model is None:
@@ -347,6 +386,9 @@ class PerColumnExpSmoothingExogForecaster:
     _columns: list[str] = field(init=False, default_factory=list)
 
     def fit(self, exog: pd.DataFrame) -> PerColumnExpSmoothingExogForecaster:
+        """
+        :param exog: исторические экзогенные данные, по которым обучается SimpleExpSmoothing для каждого столбца
+        """
         if exog is None or exog.empty:
             raise ValueError(
                 "exog пуст, нечего обучать в PerColumnExpSmoothingExogForecaster."
@@ -378,6 +420,9 @@ class PerColumnExpSmoothingExogForecaster:
         return self
 
     def predict(self, steps: int) -> pd.DataFrame:
+        """
+        :param steps: сколько шагов вперёд прогнозировать с помощью обученных моделей сглаживания
+        """
         if steps <= 0:
             raise ValueError("steps должен быть > 0.")
         if not self._columns:
@@ -412,6 +457,9 @@ class EnsembleExogForecaster:
     _weights: list[float] = field(init=False, default_factory=list)
 
     def fit(self, exog: pd.DataFrame) -> EnsembleExogForecaster:
+        """
+        :param exog: обучающий экзогенный датасет, передаваемый каждому базовому прогнозисту в ансамбле
+        """
         if not self.forecaster_factories:
             raise ValueError("Список forecaster_factories пуст.")
 
@@ -445,6 +493,9 @@ class EnsembleExogForecaster:
         return self
 
     def predict(self, steps: int) -> pd.DataFrame:
+        """
+        :param steps: горизонт, на который усредняются прогнозы участников ансамбля
+        """
         if steps <= 0:
             raise ValueError("steps должен быть > 0.")
         if not self._models:

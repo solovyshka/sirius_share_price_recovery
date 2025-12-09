@@ -13,12 +13,19 @@ class ArimaResidualModel:
     """Обычный ARIMA для прогноза остатка."""
 
     def __init__(self, order: tuple[int, int, int] = (1, 0, 0)):
+        """
+        :param order: параметры (p, d, q) ARIMA для моделирования остатка
+        """
         self.order = order
         self._fitted = None
 
     def fit(
         self, y: pd.Series, exog: Optional[pd.DataFrame] = None
     ) -> ArimaResidualModel:
+        """
+        :param y: ряд остатка для обучения
+        :param exog: экзогенные признаки, синхронные с рядом y
+        """
         y_fit = y.reset_index(drop=True)
         exog_fit = exog.reset_index(drop=True) if exog is not None else None
         self._fitted = ARIMA(y_fit, order=self.order, exog=exog_fit).fit()
@@ -27,6 +34,10 @@ class ArimaResidualModel:
     def predict(
         self, steps: int, exog_future: Optional[pd.DataFrame] = None
     ) -> pd.Series:
+        """
+        :param steps: длина прогноза остатка
+        :param exog_future: будущие значения экзогенных признаков
+        """
         if self._fitted is None:
             raise RuntimeError("Сначала вызовите fit.")
 
@@ -49,6 +60,12 @@ class AutoArimaResidualModel:
         max_q: int = 3,
         **kwargs,
     ):
+        """
+        :param seasonal: использовать ли сезонную ARIMA
+        :param m: сезонный период
+        :param max_p/max_d/max_q: верхние границы поиска по p,d,q
+        :param kwargs: доп. параметры auto_arima
+        """
         self.seasonal = seasonal
         self.m = m
         self.max_p = max_p
@@ -60,6 +77,10 @@ class AutoArimaResidualModel:
     def fit(
         self, y: pd.Series, exog: Optional[pd.DataFrame] = None
     ) -> AutoArimaResidualModel:
+        """
+        :param y: ряд остатка для обучения
+        :param exog: экзогенные признаки для авто-ARIMA
+        """
         y_fit = y.reset_index(drop=True)
         exog_fit = exog.reset_index(drop=True) if exog is not None else None
         self._fitted = auto_arima(
@@ -77,6 +98,10 @@ class AutoArimaResidualModel:
     def predict(
         self, steps: int, exog_future: Optional[pd.DataFrame] = None
     ) -> pd.Series:
+        """
+        :param steps: длина прогноза остатка
+        :param exog_future: будущие экзогенные значения для прогноза
+        """
         if self._fitted is None:
             raise RuntimeError("Сначала вызовите fit.")
 

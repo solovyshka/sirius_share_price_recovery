@@ -151,22 +151,34 @@ def _bind_train_window(
 def trend_forecast_last_slope(
     train_window: int | None = None,
 ) -> Callable[[pd.Series, int, int | None], pd.Series]:
+    """
+    :param train_window: количество последних точек тренда, используемых для оценки наклона
+    """
     return _bind_train_window(_trend_forecast_last_slope, train_window)
 
 
 def trend_forecast_linear_reg(
     train_window: int | None = None,
 ) -> Callable[[pd.Series, int, int | None], pd.Series]:
+    """
+    :param train_window: количество точек тренда для подгонки линейной регрессии
+    """
     return _bind_train_window(_trend_forecast_linear_reg, train_window)
 
 
 def trend_forecast_exponential(
     train_window: int | None = None,
 ) -> Callable[[pd.Series, int, int | None], pd.Series]:
+    """
+    :param train_window: окно точек для подгонки экспоненциальной модели тренда
+    """
     return _bind_train_window(_trend_forecast_exponential, train_window)
 
 
 def trend_forecast_logistic(
     train_window: int | None = None,
 ) -> Callable[[pd.Series, int, int | None], pd.Series]:
+    """
+    :param train_window: окно точек для подгонки логистической кривой тренда
+    """
     return _bind_train_window(_trend_forecast_logistic, train_window)

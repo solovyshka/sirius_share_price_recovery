@@ -35,6 +35,13 @@ def run_demo(
     steps: int,
     plot_tail: int,
 ):
+    """
+    :param name: метка сценария
+    :param pipeline: настроенный экземпляр ForecastPipeline
+    :param raw_df: входной датасет с ценами
+    :param steps: сколько шагов прогнозируем
+    :param plot_tail: сколько точек показывать на графике
+    """
     print(f"\n=== {name} (forecast) ===")
     result = pipeline.forecast(raw_df, steps=steps, plot=True, plot_last=plot_tail)
     print("Forecast tail:")
@@ -51,6 +58,13 @@ def evaluate_demo(
     test_size: int,
     plot_tail: int,
 ):
+    """
+    :param name: метка блока проверки
+    :param pipeline: настроенный экземпляр ForecastPipeline
+    :param raw_df: входной датасет с ценами
+    :param test_size: размер отложенной выборки
+    :param plot_tail: сколько точек отобразить
+    """
     print(f"\n=== {name} (evaluate) ===")
     eval_result = pipeline.evaluate(
         raw_df, test_size=test_size, plot=True, plot_last=plot_tail
