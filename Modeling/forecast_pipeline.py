@@ -4,6 +4,12 @@ import numpy as np
 import pandas as pd
 import matplotlib
 from typing import Callable, Optional, Sequence, Tuple, Dict, Any
+from sklearn.metrics import (
+    mean_absolute_error,
+    root_mean_squared_error,
+    r2_score,
+    mean_absolute_percentage_error,
+)
 
 try:
     import matplotlib.backends.backend_gtk4agg  # noqa: F401
@@ -203,6 +209,13 @@ class ForecastPipeline:
                 title=f"{self.ticker} backtest (test={len(y_test)})",
             )
 
+        # print(
+        #     r2_score(
+        #         np.log(y_test / y_test.shift(1))[1:],
+        #         np.log(forecast / forecast.shift(1))[1:],
+        #     )
+        # )
+
         return {
             "forecast": forecast,
             "y_test": y_test,
@@ -298,7 +311,6 @@ class ForecastPipeline:
         steps: int,
     ) -> Optional[pd.DataFrame]:
         """
-        ARIMA с экзогенными фичами требует будущие значения.
         Приоритет такой:
         1) если явно передан future_exog — используем его;
         2) иначе, если задан exog_forecast_factory — строим модель и прогнозируем exog;
@@ -450,21 +462,26 @@ class ForecastPipeline:
 
     @staticmethod
     def _compute_metrics(actual: pd.Series, forecast: pd.Series) -> dict:
-        actual = actual.align(forecast, join="inner")[0]
-        forecast = forecast.align(actual, join="inner")[0]
+        actual, forecast = actual.align(forecast, join="inner")
 
         if len(actual) == 0:
             raise ValueError("Нет перекрытия индексов между actual и forecast.")
 
-        err = actual - forecast
-        mae = float(np.abs(err).mean())
-        rmse = float(np.sqrt((err**2).mean()))
         nonzero = actual != 0
-        mape = (
-            float((np.abs(err[nonzero] / actual[nonzero])).mean()) * 100
-            if nonzero.any()
-            else np.nan
-        )
-        ss_tot = float(np.sum((actual - actual.mean()) ** 2))
-        r2 = float(1 - np.sum(err**2) / ss_tot) if ss_tot != 0 else np.nan
-        return {"mae": mae, "rmse": rmse, "mape": mape, "r2": r2}
+        if nonzero.any():
+            mape = float(
+                mean_absolute_percentage_error(
+                    actual[nonzero],
+                    forecast[nonzero],
+                )
+                * 100
+            )
+        else:
+            mape = np.nan
+
+        return {
+            "mae": mean_absolute_error(actual, forecast),
+            "rmse": root_mean_squared_error(actual, forecast),
+            "mape": mape,
+            "r2": r2_score(actual, forecast),
+        }

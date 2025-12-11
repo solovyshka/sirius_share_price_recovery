@@ -5,7 +5,7 @@ import pandas as pd
 from dataclasses import dataclass
 from typing import Callable, Optional, Protocol, Tuple
 
-TrendForecaster = Callable[[pd.Series, int], pd.Series]
+TrendForecaster = Callable[[pd.Series, int, int | None], pd.Series]
 
 
 class ExogForecastModel(Protocol):
