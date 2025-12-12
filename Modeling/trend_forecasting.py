@@ -9,8 +9,10 @@ from Modeling.lin_model_trend import (
     fit_linear_model,
     fit_logistic_model,
 )
-from neuralforecast import NeuralForecast
-from neuralforecast.models import PatchTST
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from neuralforecast import NeuralForecast  # noqa: F401
+    from neuralforecast.models import PatchTST  # noqa: F401
 
 
 def _select_training_window(trend: pd.Series, train_window: int | None) -> pd.Series:
@@ -104,7 +106,7 @@ def _trend_forecast_exponential(
         future_pred = _anchor_forecast_to_last(trend_clean, future_pred)
         return pd.Series(future_pred, name="trend_forecast")
     except Exception:
-        return trend_forecast_last_slope(trend, steps, train_window=train_window)
+        return _trend_forecast_last_slope(trend, steps, train_window=train_window)
 
 
 def _trend_forecast_logistic(
@@ -115,7 +117,7 @@ def _trend_forecast_logistic(
     """
     trend_clean = _select_training_window(trend, train_window)
     if len(trend_clean) < 5:
-        return trend_forecast_last_slope(trend, steps, train_window=train_window)
+        return _trend_forecast_last_slope(trend, steps, train_window=train_window)
 
     t = np.linspace(0.0, 1.0, len(trend_clean))
     y = trend_clean.to_numpy(dtype=float)
@@ -156,6 +158,8 @@ def _trend_forecast_patchtst(
     """
     Прогноз тренда с помощью PatchTST из библиотеки neuralforecast.
     """
+    from neuralforecast import NeuralForecast
+    from neuralforecast.models import PatchTST
     # Очищаем ряд и ограничиваем окно обучения
     trend_clean = _select_training_window(trend, train_window)
     if len(trend_clean) == 0:
