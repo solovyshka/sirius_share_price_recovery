@@ -65,7 +65,7 @@ class DecompositionResult:
         # Импорт здесь, чтобы избежать циклической зависимости.
         from Modeling.trend_forecasting import trend_forecast_last_slope
 
-        trend_fn = self.trend_forecaster or trend_forecast_last_slope
+        trend_fn = self.trend_forecaster or trend_forecast_last_slope()
         trend_forecast = trend_fn(self.trend, steps)
 
         seasonal_clean = self.seasonal.dropna()
