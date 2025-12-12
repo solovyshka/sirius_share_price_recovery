@@ -10,6 +10,7 @@ from Modeling.lin_model_trend import (
     fit_logistic_model,
 )
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from neuralforecast import NeuralForecast  # noqa: F401
     from neuralforecast.models import PatchTST  # noqa: F401
@@ -160,6 +161,7 @@ def _trend_forecast_patchtst(
     """
     from neuralforecast import NeuralForecast
     from neuralforecast.models import PatchTST
+
     # Очищаем ряд и ограничиваем окно обучения
     trend_clean = _select_training_window(trend, train_window)
     if len(trend_clean) == 0:

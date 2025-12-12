@@ -33,6 +33,7 @@ from Modeling.trend_forecasting import (
     trend_forecast_patchtst,
     trend_forecast_patchtst_on_deltas,
 )
+from typing import Optional
 
 
 def run_demo(
@@ -64,6 +65,7 @@ def evaluate_demo(
     raw_df: pd.DataFrame,
     test_size: int,
     plot_tail: int,
+    baseline_k: Optional[int] = None,
 ):
     """
     :param name: метка блока проверки
@@ -74,7 +76,11 @@ def evaluate_demo(
     """
     print(f"\n=== {name} (evaluate) ===")
     eval_result = pipeline.evaluate(
-        raw_df, test_size=test_size, plot=True, plot_last=plot_tail
+        raw_df,
+        test_size=test_size,
+        plot=True,
+        plot_last=plot_tail,
+        baseline_k=baseline_k,
     )
     print("Metrics:", eval_result["metrics"])
     print("Stationarity summary:")
@@ -84,10 +90,12 @@ def evaluate_demo(
 
 def run_all_demos():
     raw_df = pd.read_csv("DataBase/CLOSE.csv")
-    raw_df = raw_df[
-        (raw_df["timestamp"] >= pd.Timestamp("2020-01-01").timestamp())
-        & (raw_df["timestamp"] < pd.Timestamp("2021-01-01").timestamp())
-    ]
+    # raw_df = raw_df[
+    #     (raw_df["timestamp"] >= pd.Timestamp("2020-01-01").timestamp())
+    #     & (raw_df["timestamp"] < pd.Timestamp("2021-01-01").timestamp())
+    # ]
+
+    # TODO: 1) autopatch 2) check delta hypothesis
 
     ticker = "RTGZ"
     steps = 30
@@ -130,21 +138,21 @@ def run_all_demos():
         ]
     )
 
-    run_demo(
-        "STL + ARIMA + logistic trend with rolling + fracdiff features",
-        ForecastPipeline(
-            ticker=ticker,
-            feature_builders=[rolling_feat, fracdiff_feat],
-            decomposition_fn=lambda s: stl_decomposition(
-                s,
-                trend_forecaster=trend_forecast_logistic(trend_window),
-            ),
-            model_factory=arima_factory,
-        ),
-        raw_df,
-        steps,
-        plot_tail,
-    )
+    # run_demo(
+    #     "STL + ARIMA + logistic trend with rolling + fracdiff features",
+    #     ForecastPipeline(
+    #         ticker=ticker,
+    #         feature_builders=[rolling_feat, fracdiff_feat],
+    #         decomposition_fn=lambda s: stl_decomposition(
+    #             s,
+    #             trend_forecaster=trend_forecast_logistic(trend_window),
+    #         ),
+    #         model_factory=arima_factory,
+    #     ),
+    #     raw_df,
+    #     steps,
+    #     plot_tail,
+    # )
 
     evaluate_demo(
         "STL + PatchTST trend + ARIMA residual",
@@ -160,6 +168,7 @@ def run_all_demos():
         raw_df,
         test_size,
         plot_tail,
+        baseline_k=30,
     )
 
     evaluate_demo(

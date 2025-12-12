@@ -133,6 +133,7 @@ class ForecastPipeline:
         self,
         raw_df: pd.DataFrame,
         test_size: int | float = 100,
+        baseline_k: Optional[int] = None,
         plot: bool = True,
         plot_last: Optional[int] = None,
     ) -> dict:
@@ -141,6 +142,8 @@ class ForecastPipeline:
 
         :param raw_df: исходный датафрейм с ценой и фичами
         :param test_size: количество точек (int) или доля (0..1) отложенной выборки
+        :param baseline_k: если задано, рисует на тесте baseline-линию:
+            средняя цена за последние k точек train (константный прогноз на весь test).
         :param plot: рисовать ли бэктест
         :param plot_last: сколько последних точек train показывать
         """
@@ -160,6 +163,9 @@ class ForecastPipeline:
         y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
         exog_train = exog.loc[y_train.index] if exog is not None else None
         exog_test = exog.loc[y_test.index] if exog is not None else None
+
+        baseline_forecast: Optional[pd.Series] = None
+        baseline_metrics: Optional[dict] = None
 
         decomposition = self.decomposition_fn(y_train)
         residual = decomposition.residual.dropna()
@@ -198,29 +204,42 @@ class ForecastPipeline:
             trend_forecast, seasonal_forecast, residual_forecast, decomposition
         )
 
-        metrics = self._compute_metrics(y_test, forecast)
+        if baseline_k is not None:
+            if not isinstance(baseline_k, int):
+                raise ValueError("baseline_k должен быть int или None.")
+            if baseline_k <= 0:
+                raise ValueError("baseline_k должен быть > 0.")
+            if len(y_train) == 0:
+                raise ValueError("Невозможно построить baseline: y_train пуст.")
+
+            k_eff = min(baseline_k, len(y_train))
+            baseline_value = float(y_train.tail(k_eff).mean())
+            baseline_forecast = pd.Series(
+                np.full(len(y_test), baseline_value, dtype=float),
+                index=y_test.index,
+                name=f"baseline_mean_last_{k_eff}",
+            )
+            baseline_metrics = self._compute_metrics(y_test, baseline_forecast)
+
+        metrics = self._compute_metrics(y_test, forecast, baseline=baseline_forecast)
 
         if plot:
             self.plot_backtest(
                 train=y_train,
                 test=y_test,
                 forecast=forecast,
+                baseline=baseline_forecast,
                 last_points=plot_last,
                 title=f"{self.ticker} backtest (test={len(y_test)})",
             )
-
-        # print(
-        #     r2_score(
-        #         np.log(y_test / y_test.shift(1))[1:],
-        #         np.log(forecast / forecast.shift(1))[1:],
-        #     )
-        # )
 
         return {
             "forecast": forecast,
             "y_test": y_test,
             "y_train": y_train,
             "metrics": metrics,
+            "baseline_forecast": baseline_forecast,
+            "baseline_metrics": baseline_metrics,
             "decomposition": decomposition,
             "prepared_dataset": prepared_dataset,
             "stationarity_tests": stationarity_tests,
@@ -423,6 +442,7 @@ class ForecastPipeline:
         train: pd.Series,
         test: pd.Series,
         forecast: pd.Series,
+        baseline: Optional[pd.Series] = None,
         last_points: Optional[int] = None,
         title: str = "Backtest",
         figsize: tuple[int, int] = (12, 6),
@@ -433,6 +453,7 @@ class ForecastPipeline:
         :param train: обучающий сегмент
         :param test: фактические значения отложенной выборки
         :param forecast: прогноз на тестовом горизонте
+        :param baseline: опциональный baseline на тестовом горизонте
         :param last_points: длина хвоста train для отображения
         :param title: заголовок графика
         :param figsize: размер фигуры matplotlib
@@ -440,6 +461,8 @@ class ForecastPipeline:
         train = train.sort_index()
         test = test.sort_index()
         forecast = forecast.sort_index()
+        if baseline is not None:
+            baseline = baseline.sort_index()
 
         if last_points is not None:
             tail_idx = max(len(train) - last_points, 0)
@@ -449,6 +472,9 @@ class ForecastPipeline:
         ax.plot(train.index, train.values, label="train")
         ax.plot(test.index, test.values, label="test (actual)")
         ax.plot(forecast.index, forecast.values, label="forecast", linestyle="--")
+        if baseline is not None:
+            b = baseline.reindex(test.index)
+            ax.plot(b.index, b.values, label=baseline.name or "baseline", linestyle=":")
         ax.axvline(train.index[-1], color="gray", linestyle=":", alpha=0.8)
         ax.set_title(title)
         ax.set_xlabel("time")
@@ -461,7 +487,18 @@ class ForecastPipeline:
         return fig, ax
 
     @staticmethod
-    def _compute_metrics(actual: pd.Series, forecast: pd.Series) -> dict:
+    def _compute_metrics(
+        actual: pd.Series,
+        forecast: pd.Series,
+        baseline: Optional[pd.Series] = None,
+    ) -> dict:
+        """
+        Считает метрики качества прогноза.
+
+        Если передан baseline, дополнительно считает MAPE относительно baseline:
+          - mape_baseline в процентах
+          - mape_improvement_vs_baseline: (mape_baseline - mape)
+        """
         actual, forecast = actual.align(forecast, join="inner")
 
         if len(actual) == 0:
@@ -479,9 +516,37 @@ class ForecastPipeline:
         else:
             mape = np.nan
 
-        return {
+        out = {
             "mae": mean_absolute_error(actual, forecast),
             "rmse": root_mean_squared_error(actual, forecast),
             "mape": mape,
             "r2": r2_score(actual, forecast),
         }
+
+        if baseline is not None:
+            b_actual, b_forecast = actual.align(baseline, join="inner")
+            if len(b_actual) == 0:
+                # baseline есть, но не пересёкся по индексу
+                out["mape_baseline"] = np.nan
+                out["mape_improvement_vs_baseline"] = np.nan
+                return out
+
+            b_nonzero = b_actual != 0
+            if b_nonzero.any():
+                mape_baseline = float(
+                    mean_absolute_percentage_error(
+                        b_actual[b_nonzero],
+                        b_forecast[b_nonzero],
+                    )
+                    * 100
+                )
+            else:
+                mape_baseline = np.nan
+
+            out["mape_baseline"] = mape_baseline
+            if np.isfinite(mape) and np.isfinite(mape_baseline):
+                out["mape_improvement_vs_baseline"] = float(mape_baseline - mape)
+            else:
+                out["mape_improvement_vs_baseline"] = np.nan
+
+        return out
