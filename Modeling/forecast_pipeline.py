@@ -498,55 +498,74 @@ class ForecastPipeline:
         Если передан baseline, дополнительно считает MAPE относительно baseline:
           - mape_baseline в процентах
           - mape_improvement_vs_baseline: (mape_baseline - mape)
-        """
-        actual, forecast = actual.align(forecast, join="inner")
 
-        if len(actual) == 0:
+        Если точек >= 30, дополнительно считает все те же метрики
+        для первых 30-ти точек и добавляет их с суффиксом _first30.
+        """
+
+        def _core(
+            a: pd.Series,
+            f: pd.Series,
+            b: Optional[pd.Series] = None,
+        ) -> dict:
+            a, f = a.align(f, join="inner")
+
+            if len(a) == 0:
+                raise ValueError("Нет перекрытия индексов между actual и forecast.")
+
+            nonzero = a != 0
+            if nonzero.any():
+                mape = float(
+                    mean_absolute_percentage_error(a[nonzero], f[nonzero]) * 100
+                )
+            else:
+                mape = np.nan
+
+            out = {
+                "mae": mean_absolute_error(a, f),
+                "rmse": root_mean_squared_error(a, f),
+                "mape": mape,
+                "r2": r2_score(a, f),
+            }
+
+            if b is not None:
+                b_actual, b_forecast = a.align(b, join="inner")
+                if len(b_actual) == 0:
+                    out["mape_baseline"] = np.nan
+                    out["mape_improvement_vs_baseline"] = np.nan
+                    return out
+
+                b_nonzero = b_actual != 0
+                if b_nonzero.any():
+                    mape_baseline = float(
+                        mean_absolute_percentage_error(
+                            b_actual[b_nonzero],
+                            b_forecast[b_nonzero],
+                        )
+                        * 100
+                    )
+                else:
+                    mape_baseline = np.nan
+
+                out["mape_baseline"] = mape_baseline
+
+                if np.isfinite(mape) and np.isfinite(mape_baseline):
+                    out["mape_improvement_vs_baseline"] = float(mape_baseline - mape)
+                else:
+                    out["mape_improvement_vs_baseline"] = np.nan
+
+            return out
+
+        actual_aligned, forecast_aligned = actual.align(forecast, join="inner")
+        if len(actual_aligned) == 0:
             raise ValueError("Нет перекрытия индексов между actual и forecast.")
 
-        nonzero = actual != 0
-        if nonzero.any():
-            mape = float(
-                mean_absolute_percentage_error(
-                    actual[nonzero],
-                    forecast[nonzero],
-                )
-                * 100
-            )
-        else:
-            mape = np.nan
+        out = _core(actual_aligned, forecast_aligned, baseline)
 
-        out = {
-            "mae": mean_absolute_error(actual, forecast),
-            "rmse": root_mean_squared_error(actual, forecast),
-            "mape": mape,
-            "r2": r2_score(actual, forecast),
-        }
-
-        if baseline is not None:
-            b_actual, b_forecast = actual.align(baseline, join="inner")
-            if len(b_actual) == 0:
-                # baseline есть, но не пересёкся по индексу
-                out["mape_baseline"] = np.nan
-                out["mape_improvement_vs_baseline"] = np.nan
-                return out
-
-            b_nonzero = b_actual != 0
-            if b_nonzero.any():
-                mape_baseline = float(
-                    mean_absolute_percentage_error(
-                        b_actual[b_nonzero],
-                        b_forecast[b_nonzero],
-                    )
-                    * 100
-                )
-            else:
-                mape_baseline = np.nan
-
-            out["mape_baseline"] = mape_baseline
-            if np.isfinite(mape) and np.isfinite(mape_baseline):
-                out["mape_improvement_vs_baseline"] = float(mape_baseline - mape)
-            else:
-                out["mape_improvement_vs_baseline"] = np.nan
+        if len(actual_aligned) >= 30:
+            a30 = actual_aligned.iloc[:30]
+            f30 = forecast_aligned.iloc[:30]
+            out30 = _core(a30, f30, baseline)
+            out.update({f"{k}_first30": v for k, v in out30.items()})
 
         return out

@@ -31,7 +31,6 @@ from Modeling.trend_forecasting import (
     trend_forecast_linear_reg,
     trend_forecast_logistic,
     trend_forecast_patchtst,
-    trend_forecast_patchtst_on_deltas,
 )
 from typing import Optional
 
@@ -90,17 +89,12 @@ def evaluate_demo(
 
 def run_all_demos():
     raw_df = pd.read_csv("DataBase/CLOSE.csv")
-    # raw_df = raw_df[
-    #     (raw_df["timestamp"] >= pd.Timestamp("2020-01-01").timestamp())
-    #     & (raw_df["timestamp"] < pd.Timestamp("2021-01-01").timestamp())
-    # ]
+    # raw_df = raw_df[(raw_df["timestamp"] < pd.Timestamp("2021-01-01").timestamp())]
 
-    # TODO: 1) autopatch 2) check delta hypothesis
-
-    ticker = "RTGZ"
+    ticker = "VTBR"
     steps = 30
-    test_size = 100
-    plot_tail = 200
+    test_size = 200
+    plot_tail = 400
     trend_window = 15
     lags_for_boosting = 15
 
@@ -169,22 +163,6 @@ def run_all_demos():
         test_size,
         plot_tail,
         baseline_k=30,
-    )
-
-    evaluate_demo(
-        "STL + PatchTST trend on deltas + ARIMA residual",
-        ForecastPipeline(
-            ticker=ticker,
-            feature_builders=[rolling_feat, fracdiff_feat, tech_feature],
-            decomposition_fn=lambda s: stl_decomposition(
-                s,
-                trend_forecaster=trend_forecast_patchtst_on_deltas(),
-            ),
-            model_factory=arima_factory,
-        ),
-        raw_df,
-        test_size,
-        plot_tail,
     )
 
     evaluate_demo(

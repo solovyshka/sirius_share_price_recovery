@@ -329,32 +329,3 @@ def trend_forecast_patchtst(
         return _trend_forecast_patchtst(trend, steps, train_window=window)
 
     return _wrapped
-
-
-def trend_forecast_patchtst_on_deltas(
-    train_window: int | None = None,
-) -> Callable[[pd.Series, int, int | None], pd.Series]:
-    """
-    Прогноз тренда на преращениях с помощью PatchTST из neuralforecast.
-
-    :param train_window: количество последних точек тренда, используемых для обучения
-    """
-    if train_window is not None and train_window <= 0:
-        raise ValueError("train_window должен быть положительным или None.")
-
-    def _wrapped(
-        trend: pd.Series,
-        steps: int,
-        train_window_override: int | None = None,
-    ) -> pd.Series:
-        window = (
-            train_window if train_window_override is None else train_window_override
-        )
-        deltas = trend.diff().dropna()
-        deltas_fc = _trend_forecast_patchtst(deltas, steps, train_window=window)
-        start = trend.iloc[-1]
-        trend_fc = start + deltas_fc.cumsum()
-        trend_fc.name = "trend_forecast"
-        return trend_fc
-
-    return _wrapped
